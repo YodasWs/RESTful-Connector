@@ -14,6 +14,9 @@ class httpWorker {
 		if (!is_string($method)) throw new Exception('HTTP Method Required');
 		$method = strtoupper($method);
 
+		if ($method == 'GET' and empty($additional_headers)) return file_get_contents(urlencode($url));
+		if ($method == 'HEAD' and empty($additional_headers)) return get_headers($url, 1);
+
 		if (empty($request)) {
 			if (!in_array($method, array('GET', 'DELETE', 'HEAD', 'TRACE', 'OPTIONS', 'CONNECT', 'PURGE')))
 				throw new Exception("HTTP Method $method requires \$request data");
