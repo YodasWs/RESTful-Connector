@@ -1,11 +1,11 @@
 ﻿<?php
 class httpWorker {
 	public static function get($url, $additional_headers) {
-		return $this::request($url, 'GET', '', $additional_headers);
+		return self::request($url, 'GET', '', $additional_headers);
 	}
 
 	public static function post($url, $request, $additional_headers) {
-		return $this::request($url, 'POST', $request, $additional_headers);
+		return self::request($url, 'POST', $request, $additional_headers);
 	}
 
 	public static function request($url, $method = null, $request = null, $additional_headers = null) {
@@ -14,8 +14,8 @@ class httpWorker {
 		if (!is_string($method)) throw new Exception('HTTP Method Required');
 		$method = strtoupper($method);
 
-		if ($method == 'GET' and empty($additional_headers)) return file_get_contents(urlencode($url));
-		if ($method == 'HEAD' and empty($additional_headers)) return get_headers($url, 1);
+#		if ($method == 'GET' and empty($additional_headers)) return file_get_contents(urlencode($url));
+#		if ($method == 'HEAD' and empty($additional_headers)) return get_headers($url, 1);
 
 		if (empty($request)) {
 			if (!in_array($method, array('GET', 'DELETE', 'HEAD', 'TRACE', 'OPTIONS', 'CONNECT', 'PURGE')))
@@ -61,6 +61,23 @@ class httpWorker {
 		while (!feof($fp)) {
 			$response .= fgets($fp, 1024);
 		}
-		return $response;
+
+		list($response_header, $response) = explode("\r\n\r\n", $response, 2);
+
+		$headers = array();
+		$response_header = explode("\r\n", $response_header);
+		foreach ($response_header as $line) {
+			if (strpos($line, ':')) {
+				list($key, $val) = explode(':', $line, 2);
+				$headers[$key] = trim($val);
+			} else {
+				$headers[0] = $line;
+			}
+		}
+
+		return array(
+			'headers' => $headers,
+			'response' => $response,
+		);
 	}
 }?>
