@@ -1,11 +1,11 @@
 ﻿<?php
 class httpWorker {
 	public static function get($url, $additional_headers) {
-		return $this::request($url, 'GET', '', $additional_headers);
+		return self::request($url, 'GET', '', $additional_headers);
 	}
 
 	public static function post($url, $request, $additional_headers) {
-		return $this::request($url, 'POST', $request, $additional_headers);
+		return self::request($url, 'POST', $request, $additional_headers);
 	}
 
 	public static function request($url, $method = null, $request = null, $additional_headers = null) {
