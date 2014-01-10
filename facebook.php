@@ -1,8 +1,6 @@
 <?php
-require_once('oath2.php');
+require_once('oauth2.php');
 class Facebook extends OAuth2 {
-	public static $client_id;
-	public static $secret;
 	public static $auth_url = 'https://www.facebook.com/dialog/oauth';
 	public static $token_url = 'https://graph.facebook.com/oauth/access_token';
 	public static $user_url = 'https://graph.facebook.com/me?access_token=';

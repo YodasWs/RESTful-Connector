@@ -1,28 +1,23 @@
 <?php
+require_once('keys.php');
 class OAuth2 {
-	private $secret;
-	private $client_id;
 	protected $access_token;
 	public static $auth_url = ''; // Ask for Permissions
 	public static $token_url = ''; // Grab Access Token
 	public static $user_url = ''; // Grab User Info
 
 	public function __construct($options) {
-		if (empty($options['secret']))
-			throw new Exception("OAuth2.0 requires a secret key");
-		if (empty($options['client_id']))
-			throw new Exception("Client ID required");
-		$this->secret = $options['secret'];
-		$this->client_id = $options['client_id'];
 	}
 
 	public static function getPermission($service, $login_url) {
+		if (strpos($login_url, 'http://') !== 0 and strpos($login_url, 'https://') !== 0)
+			$login_url = substr($_SERVER['SCRIPT_URI'], 0, strpos($_SERVER['SCRIPT_URI'], '//')+2) . "{$_SERVER['HTTP_HOST']}$login_url";
 		$url = $login_url;
-		$_SESSION['state'] = $_GET['state'];
+		$_SESSION['state'] = md5(uniqid(rand(100,999)));
 		switch ($service) {
 		case 'fb':
 			require_once('facebook.php');
-			$url = Facebook::$auth_url . '?client_id=' . Facebook::$client_id . '&state=' . Facebook::$state .  '&redirect_uri=' . urlencode($login_url) .  '&scope=publish_stream';
+			$url = Facebook::$auth_url . '?client_id=' . Keys::$fb['client_id'] . "&state={$_SESSION['state']}&redirect_uri=" . urlencode($login_url);
 			break;
 		default:
 			return false;
@@ -35,13 +30,12 @@ class OAuth2 {
 		switch ($service) {
 		case 'fb':
 			$url = Facebook::$token_url . '?client_id=' . Facebook::$client_id . '&client_secret=' . Facebook::$secret .  '&code=' . $_GET['code'] .  '&redirect_uri=' . urlencode($login_url);
-			$response = HttpHelper(Facebook::$user_url . $_SESSION['fb_token']);
-			list($header, $fb_user_response) = explode("\r\n\r\n", $response, 2);
+			$fb_user_response = file_get_contents(Facebook::$user_url . $_SESSION['fb_token']);
 			// TODO: Check HTTP Status Code
-			#$fb_user_response = @file_get_contents($url);
 			if ($fb_user_response) {
 				$params = null;
 				parse_str($fb_user_response, $params);
+echo '<pre>' . print_r($params, true); exit;
 				$_SESSION['fb_token'] = $params['access_token'];
 				unset($params);
 			}
