@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 class httpWorker {
 	public static function get($url, $additional_headers) {
 		return self::request($url, 'GET', '', $additional_headers);

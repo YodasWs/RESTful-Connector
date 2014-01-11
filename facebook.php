@@ -1,11 +1,10 @@
 <?php
 require_once('oauth2.php');
 class Facebook extends OAuth2 {
-	public static $auth_url = 'https://www.facebook.com/dialog/oauth';
-	public static $token_url = 'https://graph.facebook.com/oauth/access_token';
-	public static $user_url = 'https://graph.facebook.com/me?access_token=';
+	const auth_url = 'https://www.facebook.com/dialog/oauth';
+	const token_url = 'https://graph.facebook.com/oauth/access_token';
 
-	private $user;
+	private $user_url = 'https://graph.facebook.com/me?access_token=';
 
 	public function __construct($options) {
 		parent::__construct($options);
@@ -20,24 +19,26 @@ class Facebook extends OAuth2 {
 	}
 
 	public function loadUser() {
-		$fb_user_response = file_get_contents($fb['user_url'] . $_SESSION['fb_token']);
+		$fb_user_response = file_get_contents($fb['user_url'] . $_SESSION['tokens']['fb']);
 		$_SESSION['user']['fb'] = json_decode($fb_user_response, true);
 		$_SESSION['user']['fb']['image'] = "https://graph.facebook.com/{$_SESSION['user']['fb']['id']}/picture";
 	}
 
 	public function loadFeed($user) {
 		if (empty($user)) $user = 'me';
-		if (empty($_SESSION['fb_token'])) {
+		if (empty($_SESSION['tokens']['fb'])) {
 			if ($user == 'me') {
 				// Need to Login
+				header('HTTP/1.1 403 Forbidden');
 				header('Location: /login?service=fb');
 				exit;
 			} else {
 			}
-		} else $url = "https://graph.facebook.com/{$user}/feed?access_token={$_SESSION['fb_token']}";
+		} else $url = "https://graph.facebook.com/{$user}/feed?access_token={$_SESSION['tokens']['fb']}";
 	}
 }
 
 // TODO: Load User Data
-if (!empty($_SESSION['fb_token']) and empty($_SESSION['user']['fb'])) {
+if (!empty($_SESSION['tokens']['fb']) and empty($_SESSION['user']['fb'])) {
+	$_SESSION['user']['fb'] = array('id' => 'me');
 }
