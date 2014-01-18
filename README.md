@@ -24,7 +24,7 @@ This class gives you more control over error-handling than PHP's file_get_conten
     I cannot be held responsible if you allow your app's secret to become public
 
 ## Supported APIs
-* [x] Facebook
+* [x] [Facebook Login](https://developers.facebook.com/docs/facebook-login/)
 * [ ] Twitter
 * [ ] Google+
 * [ ] Windows Live

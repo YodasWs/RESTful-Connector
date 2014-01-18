@@ -1,5 +1,7 @@
 <?php
-require_once('keys.php');
+if (file_exists('keys.php'))
+	require_once('keys.php');
+
 class OAuth2 {
 	protected $access_token;
 	const auth_url = ''; // Ask for Permissions
