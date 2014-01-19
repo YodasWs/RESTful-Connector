@@ -10,14 +10,15 @@ class OAuth2 {
 	public function __construct($options) {
 	}
 
-	public static function getPermission($service, $login_url) {
+	public static function getPermission($api, $login_url) {
+		global $apis;
 		if (strpos($login_url, 'http://') !== 0 and strpos($login_url, 'https://') !== 0)
 			$login_url = substr($_SERVER['SCRIPT_URI'], 0, strpos($_SERVER['SCRIPT_URI'], ':')) . "://{$_SERVER['HTTP_HOST']}$login_url";
 		$url = $login_url;
 		$_SESSION['state'] = md5(uniqid(rand(100,999))) . '%' . $login_url;
-		switch ($service) {
+		switch ($api) {
 		case 'fb':
-			require_once('facebook.php');
+			require_once($apis['fb']['file']);
 			$url = Facebook::auth_url .
 				'?client_id=' . Keys::$fb['client_id'] .
 				'&state=' . urlencode($_SESSION['state']) .
@@ -30,12 +31,13 @@ class OAuth2 {
 		exit;
 	}
 
-	public static function login($service) {
+	public static function login($api) {
+		global $apis;
 		list($state, $login_url) = explode('%', $_SESSION['state'], 2);
 		unset($_SESSION['state']);
-		switch ($service) {
+		switch ($api) {
 		case 'fb':
-			require_once('facebook.php');
+			require_once($apis['fb']['file']);
 			$url = Facebook::token_url .
 				'?client_id=' . Keys::$fb['client_id'] .
 				'&client_secret=' . Keys::$fb['secret'] . 

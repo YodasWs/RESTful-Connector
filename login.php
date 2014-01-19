@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once('connector.php');
 if (isset($_SERVER['HTTP_REFERER'])) {
 	$_SESSION['prelogin'] = $_SERVER['HTTP_REFERER'];
 	if (strstr($_SERVER['HTTP_REFERER'], '?')) {
@@ -13,9 +13,7 @@ if (isset($_SERVER['HTTP_REFERER'])) {
 // First, Ask for Permission
 if (empty($_SESSION['user']['fb']) and empty($_SESSION['tokens']['fb']) and empty($_GET['code']) and !empty($_REQUEST['service'])) {
 	// Services Using OAuth2.0
-	if (in_array($_REQUEST['service'], array(
-		'fb',
-	))) {
+	if (in_array($_REQUEST['service'], array_keys($apis))) {
 		require_once('oauth2.php');
 		OAuth2::getPermission($_REQUEST['service'], "/login?service={$_REQUEST['service']}");
 		// If we're here, there was an error
@@ -29,8 +27,8 @@ if (empty($_SESSION['user']['fb']) and empty($_SESSION['tokens']['fb']) and empt
 }
 
 // Second, Now Login
-if (empty($_SESSION['fbtoken']) and !empty($_REQUEST['state']) and !empty($_SESSION['state']) and $_REQUEST['state'] == $_SESSION['state'] and !empty($_GET['code'])) {
-	// Services Using OAuth2.0
+if (empty($_SESSION['tokens']['fb']) and !empty($_REQUEST['state']) and !empty($_SESSION['state']) and $_REQUEST['state'] == $_SESSION['state'] and !empty($_GET['code'])) {
+	// APIs Using OAuth2.0
 	if (in_array($_REQUEST['service'], array(
 		'fb',
 	))) {
