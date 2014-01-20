@@ -56,19 +56,23 @@ class Google extends OAuth2 {
 
 	public function loadFeed($user='me') {
 		$this->construct();
-		if (empty($_SESSION['tokens']['google'])) {
-			if ($user == 'me') {
-				// Need to Login
-				header('HTTP/1.1 403 Forbidden');
-				header('Location: /login?service=google');
-				exit;
-			}
-			return false;
-		}
+		if (empty($_SESSION['tokens']['google'])) return false;
 		$url = "https://www.googleapis.com/plus/v1/people/{$user}/activities/public?access_token={$_SESSION['tokens']['google']}";
-		$stream = file_get_contents($url);
-		$stream = json_decode($stream, true);
-		if (isset($stream['error'])) return false;
-		return $stream;
+		require_once('http.class.php');
+		try {
+			list($headers, $stream) = httpWorker::get($url);
+			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
+			if ((int) ($matches[1] / 100) != 2) {
+				unset($_SESSION['tokens']['google']);
+				return false;
+			}
+			if ($stream) {
+				$stream = json_decode($stream, true);
+				if (isset($stream['error'])) return false;
+				return $stream;
+			}
+		} catch (Exception $e) {
+		}
+		return false;
 	}
 }

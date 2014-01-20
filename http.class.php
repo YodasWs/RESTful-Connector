@@ -1,10 +1,10 @@
 <?php
 class httpWorker {
-	public static function get($url, $additional_headers) {
+	public static function get($url, $additional_headers=null) {
 		return self::request($url, 'GET', '', $additional_headers);
 	}
 
-	public static function post($url, $request, $additional_headers) {
+	public static function post($url, $request, $additional_headers=null) {
 		return self::request($url, 'POST', $request, $additional_headers);
 	}
 
@@ -78,6 +78,8 @@ class httpWorker {
 		}
 
 		return array(
+			0 => $headers,
+			1 => $response,
 			'headers' => $headers,
 			'response' => $response,
 		);
