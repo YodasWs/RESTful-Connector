@@ -1,12 +1,14 @@
 <?php
 require_once('oauth2.php');
 class Google extends OAuth2 {
-	const base_uri = 'https://';
+	const base_uri = 'https://www.googleapis.com/plus/v1';
 	const auth_url = 'https://accounts.google.com/o/oauth2/auth';
 	const token_url = 'https://accounts.google.com/o/oauth2/token';
-	const base_query = '?access_token=';
+	const base_query = '?prettyPrint=false&access_token=';
 
 	private $urls = array(
+		'feed' => '/people/me/activities',
+		'user' => '/people/me',
 	);
 	private $is_constructed = false;
 
@@ -35,14 +37,16 @@ class Google extends OAuth2 {
 	}
 
 	public function loadUser() {
-		return array();
 		$this->construct();
 		$user_response = file_get_contents($this->urls['user']);
-		$_SESSION['user']['google'] = json_decode($user_response, true);
-#		$_SESSION['user']['google']['image'] = self::base_uri . "/{$_SESSION['user']['google']['id']}/picture";
+		$stream = json_decode($user_response, true);
+		if (isset($stream['error'])) return false;
+		$_SESSION['user']['google'] = $stream;
+		return true;
 	}
 
 	public function newsStream() {
+		return array();
 		$this->construct();
 		$stream = file_get_contents($this->urls['stream']);
 		$stream = json_decode($stream, true);
@@ -50,17 +54,21 @@ class Google extends OAuth2 {
 		return $stream;
 	}
 
-	public function loadFeed($user) {
+	public function loadFeed($user='me') {
 		$this->construct();
-		if (empty($user)) $user = 'me';
 		if (empty($_SESSION['tokens']['google'])) {
 			if ($user == 'me') {
 				// Need to Login
 				header('HTTP/1.1 403 Forbidden');
 				header('Location: /login?service=google');
 				exit;
-			} else {
 			}
-		} else $url = "https://graph.facebook.com/{$user}/feed?access_token={$_SESSION['tokens']['google']}";
+			return false;
+		}
+		$url = "https://www.googleapis.com/plus/v1/people/{$user}/activities/public?access_token={$_SESSION['tokens']['google']}";
+		$stream = file_get_contents($url);
+		$stream = json_decode($stream, true);
+		if (isset($stream['error'])) return false;
+		return $stream;
 	}
 }
