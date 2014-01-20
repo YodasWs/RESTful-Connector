@@ -21,12 +21,12 @@ This class gives you more control over error-handling than PHP's file_get_conten
   * Save keys.php in a different folder and update either `require_once('keys.php')` or your PHP include_path
   * Add `keys.php` to your .gitignore
 
-    I cannot be held responsible if you allow your app's secret to become public
+    I cannot be held responsible if you allow your apps' secrets to become public
 
 ## Supported APIs
 * [x] [Facebook Login](https://developers.facebook.com/docs/facebook-login/)
+* [x] [Google+ Login](https://developers.google.com/+/api/oauth)
 * [ ] Twitter
-* [ ] Google+
 * [ ] Windows Live
 * [ ] Foursquare
 * [ ] Easy-to-set Icon Sets
