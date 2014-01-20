@@ -41,6 +41,7 @@ class httpWorker {
 		}
 
 		$length = strlen($request);
+		if (empty($url['query'])) $url['query'] = '';
 		if (!empty($url['query']) and strpos($url['query'], '?') !== 0) $url['query'] = "?{$url['query']}";
 
 		// Add Headers
@@ -61,6 +62,7 @@ class httpWorker {
 		while (!feof($fp)) {
 			$response .= fgets($fp, 1024);
 		}
+		fclose($fp);
 
 		list($response_header, $response) = explode("\r\n\r\n", $response, 2);
 
