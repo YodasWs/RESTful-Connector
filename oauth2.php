@@ -24,9 +24,18 @@ class OAuth2 {
 				'&state=' . urlencode($_SESSION['state']) .
 				'&redirect_uri=' . urlencode($login_url);
 			break;
+		case 'google':
+			require_once($apis['google']['file']);
+			$url = Google::auth_url . '?response_type=code&access_type=offline&include_granted_scopes=true' .
+				'&scope=' . urlencode(implode(' ', $apis['google']['scope'])) .
+				'&client_id=' . Keys::$google['client_id'] .
+				'&state=' . urlencode(urlencode($_SESSION['state'])) .
+				'&redirect_uri=' . urlencode($login_url);
+			break;
 		default:
 			return false;
 		}
+		header('HTTP/1.1 302 Found');
 		header("Location: $url");
 		exit;
 	}
@@ -40,8 +49,8 @@ class OAuth2 {
 			require_once($apis['fb']['file']);
 			$url = Facebook::token_url .
 				'?client_id=' . Keys::$fb['client_id'] .
-				'&client_secret=' . Keys::$fb['secret'] . 
-				'&code=' . $_GET['code'] . 
+				'&client_secret=' . Keys::$fb['secret'] .
+				'&code=' . $_GET['code'] .
 				'&redirect_uri=' . urlencode($login_url);
 			require_once('http.class.php');
 			$fb_user_response = '';
@@ -64,6 +73,38 @@ class OAuth2 {
 			}
 			unset($http);
 			unset($fb_user_response);
+			header('HTTP/1.1 302 Found');
+			header("Location: $login_url");
+			exit;
+		case 'google':
+			require_once($apis['google']['file']);
+			require_once('http.class.php');
+			$google_response = '';
+			$login_url = urldecode($login_url);
+			try {
+				$http = httpWorker::request(Google::token_url, 'POST', http_build_query(array(
+					'client_secret' => Keys::$google['secret'],
+					'client_id' => Keys::$google['client_id'],
+					'redirect_uri' => $login_url,
+					'grant_type' => 'authorization_code',
+					'code' => $_GET['code'],
+				)));
+				$google_response = $http['response'];
+			} catch (Exception $e) {
+				$_SESSION['error'] = array('Could not log into Google');
+				header('HTTP/1.1 500 Error');
+				header("Location: {$_SESSION['prelogin']}");
+				unset($_SESSION['prelogin']);
+				exit;
+			}
+			// TODO: Check HTTP Status Code
+			if ($google_response) {
+				$params = json_decode($google_response, true);
+				$_SESSION['tokens']['google'] = $params['access_token'];
+				// TODO: Save $params['refresh_token']
+				unset($params);
+			}
+			header('HTTP/1.1 302 Found');
 			header("Location: $login_url");
 			exit;
 		}
