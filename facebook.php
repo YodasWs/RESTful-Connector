@@ -37,6 +37,12 @@ class Facebook extends OAuth2 {
 		}
 	}
 
+	// Get Profile Picture
+	public static function userPic($user) {
+		return Facebook::base_uri . "/{$user}/picture";
+	}
+
+	// Load User Profile
 	public function loadUser() {
 		$this->construct();
 		$fb_user_response = file_get_contents($this->urls['user']);
@@ -44,6 +50,7 @@ class Facebook extends OAuth2 {
 		$_SESSION['user']['fb']['image'] = self::base_uri . "/{$_SESSION['user']['fb']['id']}/picture";
 	}
 
+	// Load Home Page News Feed
 	public function newsStream() {
 		$this->construct();
 		$stream = file_get_contents($this->urls['stream']);
@@ -52,6 +59,7 @@ class Facebook extends OAuth2 {
 		return $stream;
 	}
 
+	// Load User Activity
 	public function loadFeed($user) {
 		$this->construct();
 		if (empty($user)) $user = 'me';
