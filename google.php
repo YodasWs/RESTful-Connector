@@ -6,12 +6,6 @@ class Google extends OAuth2 {
 	const token_url = 'https://accounts.google.com/o/oauth2/token';
 	const base_query = '?prettyPrint=false&access_token=';
 
-	private $urls = array(
-		'feed' => '/people/me/activities',
-		'user' => '/people/me',
-	);
-	private $is_constructed = false;
-
 	public function __construct($options=null) {
 		if (!empty($_SESSION['tokens']['google']) and empty($_SESSION['user']['google']))
 			$this->getUser();
@@ -20,12 +14,11 @@ class Google extends OAuth2 {
 	}
 
 	protected function construct() {
-		if ($this->is_constructed) return true;
-		foreach ($this->urls as &$url) {
-			$url = self::base_uri . $url . self::base_query . $_SESSION['tokens']['google'];
-		}
-		$this->is_constructed = true;
-		return true;
+		$urls = array(
+			'feed' => '/people/me/activities',
+			'user' => '/people/me',
+		);
+		return parent::construct($urls);
 	}
 
 	public function __get($prop) {
@@ -36,8 +29,9 @@ class Google extends OAuth2 {
 		}
 	}
 
-	public function getUser() {
+	public function getUser($user='me') {
 		$this->construct();
+		if ($user == 'me' and empty($_SESSION['tokens']['google'])) return false;
 		$user_response = file_get_contents($this->urls['user']);
 		$stream = json_decode($user_response, true);
 		if (isset($stream['error'])) return false;

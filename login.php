@@ -45,7 +45,7 @@ if (!empty($_GET['code']) and !empty($_REQUEST['service']) and in_array($_REQUES
 			'fb','google',
 		))) {
 			require_once('oauth2.php');
-			OAuth2::login($_REQUEST['service']);
+			$_SESSION[$_REQUEST['service']]->login($_REQUEST['service']);
 			// If we're here, there was an error
 			$_SESSION['error'] = array('Could not login');
 			header('HTTP/1.1 403 Unauthorized');

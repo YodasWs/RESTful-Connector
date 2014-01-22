@@ -6,12 +6,6 @@ class Facebook extends OAuth2 {
 	const token_url = 'https://graph.facebook.com/oauth/access_token';
 	const base_query = '?access_token=';
 
-	private $urls = array(
-		'stream' => '/me/home',
-		'user' => '/me',
-	);
-	private $is_constructed = false;
-
 	public function __construct($options=null) {
 		if (!empty($_SESSION['tokens']['fb']) and empty($_SESSION['user']['fb']))
 			$this->getUser();
@@ -20,12 +14,11 @@ class Facebook extends OAuth2 {
 	}
 
 	protected function construct() {
-		if ($this->is_constructed) return true;
-		foreach ($this->urls as &$url) {
-			$url = self::base_uri . $url . self::base_query . $_SESSION['tokens']['fb'];
-		}
-		$this->is_constructed = true;
-		return true;
+		$urls = array(
+			'stream' => '/me/home',
+			'user' => '/me',
+		);
+		return parent::construct($urls);
 	}
 
 	public function __get($prop) {
@@ -53,17 +46,20 @@ class Facebook extends OAuth2 {
 	}
 
 	// Load User Profile
-	public function getUser($user='me') {
+	public function getUser($username='me') {
 		$this->construct();
-		if ($user == 'me' and empty($_SESSION['tokens']['fb']))
+		if ($username == 'me' and empty($_SESSION['tokens']['fb']))
 			return false;
-		$url = self::base_uri . "/$user" . self::getURL('user');
+		$url = self::base_uri . "/$username" . self::getURL('user');
 		if (!empty($_SESSION['tokens']['fb']))
 			$url .= self::base_query . $_SESSION['tokens']['fb'];
 		$fb_user_response = file_get_contents($url);
 		$user = json_decode($fb_user_response, true);
-		if (isset($user['error'])) return false;
-		if ($user == 'me') {
+		if (isset($user['error'])) {
+			$_SESSION['error'] = $user['error'];
+			return false;
+		}
+		if ($username == 'me') {
 			$_SESSION['user']['fb'] = $user;
 			$_SESSION['user']['fb']['image'] = self::base_uri . "/{$_SESSION['user']['fb']['id']}/picture";
 		}

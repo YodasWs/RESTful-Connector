@@ -6,6 +6,8 @@ abstract class OAuth2 {
 	protected $access_token;
 	const auth_url = ''; // Ask for Permissions
 	const token_url = ''; // Grab Access Token
+	protected $is_constructed = false;
+	protected $urls = array();
 
 	public function __construct($options=null) {
 	}
@@ -40,19 +42,19 @@ abstract class OAuth2 {
 		exit;
 	}
 
-	public static function login($api) {
+	public function login($api) {
 		global $apis;
 		list($state, $login_url) = explode('%', $_SESSION['state'], 2);
+		$this->is_constructed = false;
 		unset($_SESSION['state']);
+		require_once('http.class.php');
 		switch ($api) {
 		case 'fb':
-			require_once($apis['fb']['file']);
 			$url = Facebook::token_url .
 				'?client_id=' . Keys::$fb['client_id'] .
 				'&client_secret=' . Keys::$fb['secret'] .
 				'&code=' . $_GET['code'] .
 				'&redirect_uri=' . urlencode($login_url);
-			require_once('http.class.php');
 			$fb_user_response = '';
 			try {
 				$http = httpWorker::request($url);
@@ -73,12 +75,8 @@ abstract class OAuth2 {
 			}
 			unset($http);
 			unset($fb_user_response);
-			header('HTTP/1.1 302 Found');
-			header("Location: $login_url");
-			exit;
+			break;
 		case 'google':
-			require_once($apis['google']['file']);
-			require_once('http.class.php');
 			$google_response = '';
 			$login_url = urldecode($login_url);
 			try {
@@ -104,10 +102,15 @@ abstract class OAuth2 {
 				// TODO: Save $params['refresh_token']
 				unset($params);
 			}
-			header('HTTP/1.1 302 Found');
-			header("Location: $login_url");
+			break;
+		default:
+			header('HTTP/1.1 400 Bad Request');
 			exit;
 		}
+		$this->getUser();
+		header('HTTP/1.1 302 Found');
+		header("Location: $login_url");
+		exit;
 	}
 
 	public static function getURL($target) {
@@ -116,7 +119,27 @@ abstract class OAuth2 {
 		return false;
 	}
 
-	protected abstract function construct();
+	protected function construct($urls) {
+		if ($this->is_constructed) return true;
+		$class = get_called_class();
+		switch ($class) {
+		case 'Facebook':
+			$api = 'fb';
+			break;
+		case 'Google':
+			$api = 'google';
+			break;
+		default:
+			return false;
+		}
+		foreach ($urls as $key => $url) {
+			$this->urls[$key] = $class::base_uri . $url;
+			if (!empty($_SESSION['tokens'][$api]))
+				$this->urls[$key] .= $class::base_query . $_SESSION['tokens'][$api];
+		}
+		$this->is_constructed = true;
+		return true;
+	}
 	public abstract function userFeed();
 	public abstract function getUser();
 }
