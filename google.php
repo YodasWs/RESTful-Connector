@@ -12,14 +12,14 @@ class Google extends OAuth2 {
 	);
 	private $is_constructed = false;
 
-	public function __construct($options) {
+	public function __construct($options=null) {
 		if (!empty($_SESSION['tokens']['google']) and empty($_SESSION['user']['google']))
-			$this->loadUser();
+			$this->getUser();
 		$this->construct();
 		parent::__construct($options);
 	}
 
-	private function construct() {
+	protected function construct() {
 		if ($this->is_constructed) return true;
 		foreach ($this->urls as &$url) {
 			$url = self::base_uri . $url . self::base_query . $_SESSION['tokens']['google'];
@@ -36,7 +36,7 @@ class Google extends OAuth2 {
 		}
 	}
 
-	public function loadUser() {
+	public function getUser() {
 		$this->construct();
 		$user_response = file_get_contents($this->urls['user']);
 		$stream = json_decode($user_response, true);
@@ -54,10 +54,18 @@ class Google extends OAuth2 {
 		return $stream;
 	}
 
-	public function loadFeed($user='me') {
+	public function userFeed($user='me') {
 		$this->construct();
-		if (empty($_SESSION['tokens']['google'])) return false;
-		$url = "https://www.googleapis.com/plus/v1/people/{$user}/activities/public?access_token={$_SESSION['tokens']['google']}";
+		if (empty($_SESSION['tokens']['google'])) {
+			if ($user == 'me') {
+				// Login Required
+				header('HTTP/1.1 403 Forbidden');
+				header('Location: /login?service=google');
+				exit;
+			}
+			return false;
+		}
+		$url = self::base_uri . "/people/{$user}/activities/public?access_token={$_SESSION['tokens']['google']}";
 		require_once('http.class.php');
 		try {
 			list($headers, $stream) = httpWorker::get($url);

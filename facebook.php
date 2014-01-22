@@ -12,14 +12,14 @@ class Facebook extends OAuth2 {
 	);
 	private $is_constructed = false;
 
-	public function __construct($options) {
+	public function __construct($options=null) {
 		if (!empty($_SESSION['tokens']['fb']) and empty($_SESSION['user']['fb']))
-			$this->loadUser();
+			$this->getUser();
 		$this->construct();
 		parent::__construct($options);
 	}
 
-	private function construct() {
+	protected function construct() {
 		if ($this->is_constructed) return true;
 		foreach ($this->urls as &$url) {
 			$url = self::base_uri . $url . self::base_query . $_SESSION['tokens']['fb'];
@@ -37,22 +37,43 @@ class Facebook extends OAuth2 {
 		}
 	}
 
+	public static function getURL($target) {
+		switch ($target) {
+		case 'user':
+			return '';
+		case 'feed':
+			return '/feed';
+		}
+		return paretn::getURL($target);
+	}
+
 	// Get Profile Picture
 	public static function userPic($user) {
 		return Facebook::base_uri . "/{$user}/picture";
 	}
 
 	// Load User Profile
-	public function loadUser() {
+	public function getUser($user='me') {
 		$this->construct();
-		$fb_user_response = file_get_contents($this->urls['user']);
-		$_SESSION['user']['fb'] = json_decode($fb_user_response, true);
-		$_SESSION['user']['fb']['image'] = self::base_uri . "/{$_SESSION['user']['fb']['id']}/picture";
+		if ($user == 'me' and empty($_SESSION['tokens']['fb']))
+			return false;
+		$url = self::base_uri . "/$user" . self::getURL('user');
+		if (!empty($_SESSION['tokens']['fb']))
+			$url .= self::base_query . $_SESSION['tokens']['fb'];
+		$fb_user_response = file_get_contents($url);
+		$user = json_decode($fb_user_response, true);
+		if (isset($user['error'])) return false;
+		if ($user == 'me') {
+			$_SESSION['user']['fb'] = $user;
+			$_SESSION['user']['fb']['image'] = self::base_uri . "/{$_SESSION['user']['fb']['id']}/picture";
+		}
+		return $user;
 	}
 
 	// Load Home Page News Feed
 	public function newsStream() {
 		$this->construct();
+		if (empty($_SESSION['tokens']['fb'])) return false;
 		$stream = file_get_contents($this->urls['stream']);
 		$stream = json_decode($stream, true);
 		if (isset($stream['error'])) return false;
@@ -60,18 +81,19 @@ class Facebook extends OAuth2 {
 	}
 
 	// Load User Activity
-	public function loadFeed($user='me') {
+	public function userFeed($user='me') {
 		$this->construct();
-		$url = self::base_uri . "/$user/feed";
+		// Active User Required
 		if (empty($_SESSION['tokens']['fb'])) {
 			if ($user == 'me') {
 				// Need to Login
 				header('HTTP/1.1 403 Forbidden');
 				header('Location: /login?service=fb');
 				exit;
-			} else {
 			}
-		} else $url .= self::base_query . $_SESSION['tokens']['fb'];
+			return false;
+		}
+		$url = self::base_uri . "/$user" . self::getURL('feed') . self::base_query . $_SESSION['tokens']['fb'];
 		$feed = file_get_contents($url);
 		if (!$feed) return false;
 		$feed = json_decode($feed, true);

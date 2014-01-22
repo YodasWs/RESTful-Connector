@@ -25,14 +25,14 @@ foreach ($apis as $api) {
 
 session_start();
 
-if (!empty($_SESSION['user']) or !empty($_SESSION['tokens'])) {
-	// Load Service Object and User Data
-	foreach (array_keys($_SESSION['tokens']) as $api) {
-		if (!empty($_SESSION['tokens'][$api]) and empty($_SESSION['user'][$api])) {
-			$_SESSION['user'][$api] = array();
-			if (empty($_SESSION[$api]) or get_class($_SESSION[$api]) != $apis[$api]['class'])
-				$_SESSION[$api] = new $apis[$api]['class']();
-			$_SESSION[$api]->loadUser();
-		}
+foreach ($apis as $key => $api) {
+	// Load Service Object
+	if (empty($_SESSION[$key]) or get_class($_SESSION[$key]) != $api['class'])
+		$_SESSION[$key] = new $api['class']();
+	// Load User Data
+	// TODO: Also load if data is "old"
+	if (!empty($_SESSION['tokens'][$key]) and empty($_SESSION['user'][$key])) {
+		$_SESSION['user'][$key] = array();
+		$_SESSION[$key]->getUser();
 	}
 }
