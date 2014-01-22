@@ -2,12 +2,12 @@
 if (file_exists('keys.php'))
 	require_once('keys.php');
 
-class OAuth2 {
+abstract class OAuth2 {
 	protected $access_token;
 	const auth_url = ''; // Ask for Permissions
 	const token_url = ''; // Grab Access Token
 
-	public function __construct($options) {
+	public function __construct($options=null) {
 	}
 
 	public static function getPermission($api, $login_url) {
@@ -109,4 +109,14 @@ class OAuth2 {
 			exit;
 		}
 	}
+
+	public static function getURL($target) {
+		switch ($target) {
+		}
+		return false;
+	}
+
+	protected abstract function construct();
+	public abstract function userFeed();
+	public abstract function getUser();
 }
