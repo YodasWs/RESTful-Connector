@@ -60,9 +60,9 @@ class Facebook extends OAuth2 {
 	}
 
 	// Load User Activity
-	public function loadFeed($user) {
+	public function loadFeed($user='me') {
 		$this->construct();
-		if (empty($user)) $user = 'me';
+		$url = self::base_uri . "/$user/feed";
 		if (empty($_SESSION['tokens']['fb'])) {
 			if ($user == 'me') {
 				// Need to Login
@@ -71,6 +71,11 @@ class Facebook extends OAuth2 {
 				exit;
 			} else {
 			}
-		} else $url = "https://graph.facebook.com/{$user}/feed?access_token={$_SESSION['tokens']['fb']}";
+		} else $url .= self::base_query . $_SESSION['tokens']['fb'];
+		$feed = file_get_contents($url);
+		if (!$feed) return false;
+		$feed = json_decode($feed, true);
+		if (!empty($feed['error'])) return false;
+		return $feed;
 	}
 }
