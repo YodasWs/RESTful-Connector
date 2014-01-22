@@ -12,7 +12,7 @@ if (isset($_SERVER['HTTP_REFERER'])) {
 
 // First, Ask for Permission
 if (empty($_GET['code']) and !empty($_REQUEST['service']) and in_array($_REQUEST['service'], array_keys($apis))) {
-	if (empty($_SESSION['user'][$_REQUEST['service']]) and empty($_SESSION['tokens'][$_REQUEST['service']])) {
+	if (empty($_SESSION['tokens'][$_REQUEST['service']])) {
 		// APIs Using OAuth2.0
 		if (in_array($_REQUEST['service'], array(
 			'fb','google',
