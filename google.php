@@ -29,14 +29,35 @@ class Google extends OAuth2 {
 		}
 	}
 
+	public static function getURL($target) {
+		switch ($target) {
+		case 'user':
+			return '/people';
+		case 'feed':
+			return '/activities';
+		}
+		return parent::getURL($target);
+	}
+
 	public function getUser($user='me') {
 		$this->construct();
-		if ($user == 'me' and empty($_SESSION['tokens']['google'])) return false;
-		$user_response = file_get_contents($this->urls['user']);
-		$stream = json_decode($user_response, true);
-		if (isset($stream['error'])) return false;
-		$_SESSION['user']['google'] = $stream;
-		return true;
+		if (empty($_SESSION['tokens']['google'])) return false;
+		$url = self::base_uri . self::getURL('user') . "/$user" . self::base_query . $_SESSION['tokens']['google'];
+		require_once('http.class.php');
+		try {
+			list($headers, $stream) = httpWorker::get($url);
+			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
+			if ((int) ($matches[1] / 100) != 2) {
+				unset($_SESSION['tokens']['google']);
+				return false;
+			}
+			$stream = json_decode($user, true);
+			if (isset($stream['error'])) return false;
+			$_SESSION['user']['google'] = $stream;
+			return true;
+		} catch (Exception $e) {
+		}
+		return false;
 	}
 
 	public function newsStream() {
@@ -68,11 +89,10 @@ class Google extends OAuth2 {
 				unset($_SESSION['tokens']['google']);
 				return false;
 			}
-			if ($stream) {
-				$stream = json_decode($stream, true);
-				if (isset($stream['error'])) return false;
-				return $stream;
-			}
+			if (!$stream) return false;
+			$stream = json_decode($stream, true);
+			if (isset($stream['error'])) return false;
+			return $stream;
 		} catch (Exception $e) {
 		}
 		return false;
