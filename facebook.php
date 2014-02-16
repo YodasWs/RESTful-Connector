@@ -70,10 +70,26 @@ class Facebook extends OAuth2 {
 	public function newsStream() {
 		$this->construct();
 		if (empty($_SESSION['tokens']['fb'])) return false;
-		$stream = file_get_contents($this->urls['stream']);
-		$stream = json_decode($stream, true);
-		if (isset($stream['error'])) return false;
-		return $stream;
+		require_once('http.class.php');
+		try {
+			list($headers, $stream) = httpWorker::get($this->urls['stream']);
+			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
+			if ((int) ($matches[1] / 100) != 2) {
+				if (in_array($matches[1], array(
+					401,403,
+				))) {
+					unset($_SESSION['tokens']['fb']);
+					header('HTTP/1.1 403 Forbidden');
+					header('Location: /login?service=fb');
+					exit;
+				}
+				return false;
+			}
+			$stream = json_decode($stream, true);
+			if (isset($stream['error'])) return false;
+			return $stream;
+		} catch (Exception $e) {
+		}
 	}
 
 	// Load User Activity
@@ -90,10 +106,20 @@ class Facebook extends OAuth2 {
 			return false;
 		}
 		$url = self::base_uri . "/$user" . self::getURL('feed') . self::base_query . $_SESSION['tokens']['fb'];
-		$feed = file_get_contents($url);
-		if (!$feed) return false;
-		$feed = json_decode($feed, true);
-		if (!empty($feed['error'])) return false;
-		return $feed;
+		require_once('http.class.php');
+		try{
+			list($headers, $feed) = httpWorker::get($url);
+			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
+			if ((int) ($matches[1] / 100) != 2) {
+				unset($_SESSION['tokens']['fb']);
+				return false;
+			}
+			if (!$feed) return false;
+			$feed = json_decode($feed, true);
+			if (!empty($feed['error'])) return false;
+			return $feed;
+		} catch (Exception $e) {
+		}
+		return false;
 	}
 }
