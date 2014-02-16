@@ -3,18 +3,21 @@
 $apis = array(
 	'fb' => array(
 		'file' => 'facebook.php',
-		'login' => '/icons/fb-login.jpg',
+		'login' => '/icons/facebook.png',
 		'class' => 'Facebook',
 		'name' => 'Facebook',
+		'color' => '#5371ae',
+#		'color' => '#375591',
 	),
 	'google' => array(
 		'file' => 'google.php',
-		'login' => 'https://ssl.gstatic.com/s2/oz/images/sprites/signinbutton-094c03c836f9f91d08b943a90778d34e.png',
+		'login' => '/icons/google.png',
 		'class' => 'Google',
 		'name' => 'Google+',
 		'scope' => array(
 			'https://www.googleapis.com/auth/plus.login',
 		),
+		'color' => '#de472f',
 	),
 );
 // Load Service Files
