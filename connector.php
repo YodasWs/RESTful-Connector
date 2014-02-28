@@ -6,8 +6,16 @@ $apis = array(
 		'login' => '/icons/facebook.png',
 		'class' => 'Facebook',
 		'name' => 'Facebook',
-		'color' => '#5371ae',
-#		'color' => '#375591',
+		'scope' => array(
+			// https://developers.facebook.com/docs/facebook-login/permissions/
+			'read_stream',
+			'user_likes',
+			'publish_actions', // Warning: This is Optional
+		),
+		'color' => array(
+			'#5371ae',
+			'#90b3f2',
+		),
 	),
 	'google' => array(
 		'file' => 'google.php',
@@ -17,7 +25,10 @@ $apis = array(
 		'scope' => array(
 			'https://www.googleapis.com/auth/plus.login',
 		),
-		'color' => '#de472f',
+		'color' => array(
+			'#de472f',
+			'#ffe4e1',
+		),
 	),
 );
 // Load Service Files

@@ -9,6 +9,7 @@ if (isset($_SERVER['HTTP_REFERER'])) {
 		$_SESSION['prelogin'] = substr($_SERVER['HTTP_REFERER'], 0, strpos($_SERVER['HTTP_REFERER'], ':')) . "://{$_SERVER['HTTP_HOST']}";
 	}
 } else $_SESSION['prelogin'] = substr($_SERVER['SCRIPT_URI'], 0, strpos($_SERVER['SCRIPT_URI'], ':')) . "://{$_SERVER['HTTP_HOST']}";
+if (strpos($_SESSION['prelogin'], ':') === 0) $_SESSION['prelogin'] = "http{$_SESSION['prelogin']}";
 
 // First, Ask for Permission
 if (empty($_GET['code']) and !empty($_REQUEST['service']) and in_array($_REQUEST['service'], array_keys($apis))) {

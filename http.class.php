@@ -23,10 +23,13 @@ class httpWorker {
 			else $request = '';
 		}
 
+		if (is_array($request)) $request = http_build_query($request, 'var', '&', PHP_QUERY_RFC3986);
+
 		if (empty($url) or !filter_var($url, FILTER_VALIDATE_URL))
 			throw new Exception("Valid URL required");
 		$url = parse_url($url);
 		if (empty($url['host'])) throw new Exception("Host name required in URL");
+		if (empty($url['path'])) $url['path'] = '/';
 
 		// Set Scheme and Port
 		switch ($url['scheme']) {

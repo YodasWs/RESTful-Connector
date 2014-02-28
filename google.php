@@ -97,4 +97,7 @@ class Google extends OAuth2 {
 		}
 		return false;
 	}
+
+	public function unlike($object) {}
+	public function like($object) {}
 }

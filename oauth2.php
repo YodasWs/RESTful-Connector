@@ -16,6 +16,7 @@ abstract class OAuth2 {
 		global $apis;
 		if (strpos($login_url, 'http://') !== 0 and strpos($login_url, 'https://') !== 0)
 			$login_url = substr($_SERVER['SCRIPT_URI'], 0, strpos($_SERVER['SCRIPT_URI'], ':')) . "://{$_SERVER['HTTP_HOST']}$login_url";
+		if (strpos($login_url, ':') === 0) $login_url = "http{$login_url}";
 		$url = $login_url;
 		$_SESSION['state'] = md5(uniqid(rand(100,999))) . '%' . $login_url;
 		switch ($api) {
@@ -25,11 +26,14 @@ abstract class OAuth2 {
 				'?client_id=' . Keys::$fb['client_id'] .
 				'&state=' . urlencode($_SESSION['state']) .
 				'&redirect_uri=' . urlencode($login_url);
+			if (!empty($apis['fb']['scope']))
+				$url .= '&scope=' . urlencode(implode(' ', $apis['fb']['scope']));
 			break;
 		case 'google':
 			require_once($apis['google']['file']);
 			$url = Google::auth_url . '?response_type=code&access_type=offline&include_granted_scopes=true' .
 				'&scope=' . urlencode(implode(' ', $apis['google']['scope'])) .
+				// TODO: Check for propery's existence
 				'&client_id=' . Keys::$google['client_id'] .
 				'&state=' . urlencode(urlencode($_SESSION['state'])) .
 				'&redirect_uri=' . urlencode($login_url);
@@ -115,6 +119,8 @@ abstract class OAuth2 {
 
 	public static function getURL($target) {
 		switch ($target) {
+		case 'user':
+			return '';
 		}
 		return false;
 	}
@@ -142,4 +148,6 @@ abstract class OAuth2 {
 	}
 	public abstract function userFeed();
 	public abstract function getUser();
+	public abstract function unlike($object);
+	public abstract function like($object);
 }

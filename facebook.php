@@ -31,13 +31,15 @@ class Facebook extends OAuth2 {
 	}
 
 	public static function getURL($target) {
-		switch ($target) {
+		if (in_array($target, array(
+			'feed','picture','permissions','likes',
+		))) {
+			return "/$target";
+		} else switch ($target) {
 		case 'user':
 			return '';
-		case 'feed':
-			return '/feed';
 		}
-		return paretn::getURL($target);
+		return parent::getURL($target);
 	}
 
 	// Get Profile Picture
@@ -50,18 +52,61 @@ class Facebook extends OAuth2 {
 		$this->construct();
 		if ($username == 'me' and empty($_SESSION['tokens']['fb']))
 			return false;
-		$url = self::base_uri . "/$username" . self::getURL('user');
+		$request = array(
+			'include_headers' => false,
+			'batch' => array(),
+		);
 		if (!empty($_SESSION['tokens']['fb']))
-			$url .= self::base_query . $_SESSION['tokens']['fb'];
-		$fb_user_response = file_get_contents($url);
-		$user = json_decode($fb_user_response, true);
-		if (isset($user['error'])) {
-			$_SESSION['error'] = $user['error'];
+			$request['access_token'] = $_SESSION['tokens']['fb'];
+		$keys = array('user'); // Track Which Response Matches Which Request
+		$request['batch'][] = array(
+			'relative_url' => $username . self::getURL('user'),
+			'method' => 'GET',
+		);
+		if ($username == 'me') {
+			// Check Granted Permissions
+			$keys[] = 'permissions';
+			$request['batch'][] = array(
+				'relative_url' => $username . self::getURL('permissions'),
+				'method' => 'GET',
+			);
+		}
+		$user = array();
+
+		require_once('http.class.php');
+		try {
+			$request['batch'] = json_encode($request['batch']);
+			list($headers, $fb_response) = httpWorker::post(self::base_uri, $request);
+			$fb_response = @json_decode($fb_response, true);
+			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
+			if ((int) ($matches[1] / 100) != 2) return false;
+			if (isset($fb_response['error'])) {
+				$_SESSION['error'] = $fb_response['error'];
+				return false;
+			}
+			foreach ($fb_response as $reply => $response) {
+				$body = json_decode($response['body'], true);
+				if ((int) ($response['code'] / 100) != 2) return false;
+				if (isset($body['error'])) {
+					$_SESSION['error'] = $body['error'];
+					return false;
+				}
+				if ($reply === 0) $user = $body;
+				else if (!empty($body['data'])) {
+					$body['data'][0] = array_filter($body['data'][0]);
+					if ($keys[$reply] == 'permissions')
+						$user['permissions'] = array_keys($body['data'][0]);
+					else
+						$user[$keys[$reply]] = $body['data'];
+				}
+			}
+		} catch (Exception $e) {
 			return false;
 		}
-		if ($username == 'me') {
+
+		if ($username == 'me' and !empty($user)) {
 			$_SESSION['user']['fb'] = $user;
-			$_SESSION['user']['fb']['image'] = self::base_uri . "/{$_SESSION['user']['fb']['id']}/picture";
+			$_SESSION['user']['fb']['image'] = self::userPic($_SESSION['user']['fb']['id']);
 		}
 		return $user;
 	}
@@ -86,7 +131,11 @@ class Facebook extends OAuth2 {
 				return false;
 			}
 			$stream = json_decode($stream, true);
-			if (isset($stream['error'])) return false;
+			if (isset($stream['error'])) {
+				$_SESSION['error'] = $stream['error'];
+				return false;
+			}
+// TODO: Ask for Like on Each Item
 			return $stream;
 		} catch (Exception $e) {
 		}
@@ -120,6 +169,43 @@ class Facebook extends OAuth2 {
 			return $feed;
 		} catch (Exception $e) {
 		}
+		return false;
+	}
+
+	// Like a Facebook Object
+	// https://developers.facebook.com/docs/reference/api/post/
+	public function like($object) {
+		$this->construct();
+		if (empty($_SESSION['tokens']['fb'])) return false;
+		// Check Permission
+		if (!in_array('publish_actions', $_SESSION['user']['fb']['permissions'])) return false;
+		// Check for Valid ID
+		if (is_int($object) or is_numeric($object)) {
+			$object = "https://graph.facebook.com/$object";
+		} else if (is_string($object) and preg_match("'^\d+_\d+$'", $object)) {
+			// This is a valid Facebook ID, "<user_id>_<post_id>"
+			$object = "https://graph.facebook.com/{$object}";
+		} else if (is_string($object) and preg_match("'^(https://graph.facebook.com)?/?(\d+)/\w+/(\d+)$'", $object, $matches)) {
+			// Convert to Facebook ID, "<user_id>_<post_id>"
+			$object = "https://graph.facebook.com/{$matches[1]}_{$matches[2]}";
+		} else return false;
+		// Like
+		$url = "$object/likes";
+		require_once('http.class.php');
+		try {
+			list($header, $response) = httpWorker::post($url, array(
+				'access_token' => $_SESSION['tokens']['fb'],
+			));
+			return $response;
+		} catch (Exception $e) {
+		}
+		return false;
+	}
+
+	// Unlike a Facebook Object
+	public function unlike($object) {
+		$this->construct();
+		if (empty($_SESSION['tokens']['fb'])) return false;
 		return false;
 	}
 }
