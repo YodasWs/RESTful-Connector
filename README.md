@@ -3,6 +3,12 @@ RESTful-Connector
 
 Helping you connect to third-party RESTful APIs using HTTP and OAuth 2.0
 
+## Features
+
+* Log into Facebook and Google+ using OAuth2.0
+* Get users' profile information and feeds
+* Now with Facebook Like! (Unlike in active development)
+
 ## Setup
 
 ### HTTP
@@ -26,9 +32,10 @@ This class gives you more control over error-handling than PHP's file_get_conten
 ## Supported APIs
 * [x] [Facebook Login](https://developers.facebook.com/docs/facebook-login/)
 * [x] [Google+ Login](https://developers.google.com/+/api/oauth)
+* [ ] Instagram
+* [ ] Foursquare
 * [ ] Twitter
 * [ ] Windows Live
-* [ ] Foursquare
 * [ ] Easy-to-set Icon Sets
 
 ## Resources
