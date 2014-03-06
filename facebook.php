@@ -1,5 +1,6 @@
 <?php
 require_once('oauth2.php');
+require_once('http.class.php');
 class Facebook extends OAuth2 {
 	const base_uri = 'https://graph.facebook.com';
 	const auth_url = 'https://www.facebook.com/dialog/oauth';
@@ -73,13 +74,12 @@ class Facebook extends OAuth2 {
 		}
 		$user = array();
 
-		require_once('http.class.php');
 		try {
 			$request['batch'] = json_encode($request['batch']);
 			list($headers, $fb_response) = httpWorker::post(self::base_uri, $request);
-			$fb_response = @json_decode($fb_response, true);
 			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
 			if ((int) ($matches[1] / 100) != 2) return false;
+			$fb_response = json_decode($fb_response, true);
 			if (isset($fb_response['error'])) {
 				$_SESSION['error'] = $fb_response['error'];
 				return false;
@@ -115,7 +115,6 @@ class Facebook extends OAuth2 {
 	public function newsStream() {
 		$this->construct();
 		if (empty($_SESSION['tokens']['fb'])) return false;
-		require_once('http.class.php');
 		try {
 			list($headers, $stream) = httpWorker::get($this->urls['stream']);
 			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
@@ -136,7 +135,7 @@ class Facebook extends OAuth2 {
 				return false;
 			}
 // TODO: Ask for Like on Each Item
-			return $stream;
+			return $stream['data'];
 		} catch (Exception $e) {
 		}
 	}
@@ -155,7 +154,6 @@ class Facebook extends OAuth2 {
 			return false;
 		}
 		$url = self::base_uri . "/$user" . self::getURL('feed') . self::base_query . $_SESSION['tokens']['fb'];
-		require_once('http.class.php');
 		try{
 			list($headers, $feed) = httpWorker::get($url);
 			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
@@ -177,23 +175,12 @@ class Facebook extends OAuth2 {
 	public function like($object) {
 		$this->construct();
 		if (empty($_SESSION['tokens']['fb'])) return false;
-		// Check Permission
-		if (!in_array('publish_actions', $_SESSION['user']['fb']['permissions'])) return false;
-		// Check for Valid ID
-		if (is_int($object) or is_numeric($object)) {
-			$object = "https://graph.facebook.com/$object";
-		} else if (is_string($object) and preg_match("'^\d+_\d+$'", $object)) {
-			// This is a valid Facebook ID, "<user_id>_<post_id>"
-			$object = "https://graph.facebook.com/{$object}";
-		} else if (is_string($object) and preg_match("'^(https://graph.facebook.com)?/?(\d+)/\w+/(\d+)$'", $object, $matches)) {
-			// Convert to Facebook ID, "<user_id>_<post_id>"
-			$object = "https://graph.facebook.com/{$matches[1]}_{$matches[2]}";
-		} else return false;
+		if (!in_array('publish_actions', $_SESSION['user']['fb']['permissions'])) return false; // Check Permission
+		$object = $this->validID($object);
+		if (empty($object)) return false;
 		// Like
-		$url = "$object/likes";
-		require_once('http.class.php');
 		try {
-			list($header, $response) = httpWorker::post($url, array(
+			list($headers, $response) = httpWorker::post(Facebook::base_uri . $object . self::getURL('likes'), array(
 				'access_token' => $_SESSION['tokens']['fb'],
 			));
 			return $response;
@@ -202,10 +189,33 @@ class Facebook extends OAuth2 {
 		return false;
 	}
 
+	private function validID($object) {
+		// Check for Valid ID
+		if (is_int($object) or is_numeric($object)) {
+			$object = "/$object";
+		} else if (is_string($object) and preg_match("'^\d+_\d+$'", $object)) {
+			// This is a valid Facebook ID, "<user_id>_<post_id>"
+			$object = "/{$object}";
+		} else if (is_string($object) and preg_match("'^(https://graph.facebook.com)?/?(\d+)/\w+/(\d+)$'", $object, $matches)) {
+			// Convert to Facebook ID, "<user_id>_<post_id>"
+			$object = "/{$matches[1]}_{$matches[2]}";
+		} else return false;
+		return $object;
+	}
+
 	// Unlike a Facebook Object
 	public function unlike($object) {
 		$this->construct();
 		if (empty($_SESSION['tokens']['fb'])) return false;
+		if (!in_array('publish_actions', $_SESSION['user']['fb']['permissions'])) return false;
+		$object = $this->validID($object);
+		if (empty($object)) return false;
+		try {
+			$url = Facebook::base_uri . $object . self::getURL('likes') . self::base_query . $_SESSION['tokens']['fb'];
+			list($headers, $response) = httpWorker::request($url, 'DELETE');
+			return $response;
+		} catch (Exception $e) {
+		}
 		return false;
 	}
 }
