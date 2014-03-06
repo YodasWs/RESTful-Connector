@@ -3,7 +3,6 @@
 $apis = array(
 	'fb' => array(
 		'file' => 'facebook.php',
-		'login' => '/icons/facebook.png',
 		'class' => 'Facebook',
 		'name' => 'Facebook',
 		'scope' => array(
@@ -12,29 +11,22 @@ $apis = array(
 			'user_likes',
 			'publish_actions', // Warning: This is Optional
 		),
-		'color' => array(
-			'#5371ae',
-			'#90b3f2',
-		),
 	),
 	'google' => array(
 		'file' => 'google.php',
-		'login' => '/icons/google.png',
 		'class' => 'Google',
 		'name' => 'Google+',
 		'scope' => array(
 			'https://www.googleapis.com/auth/plus.login',
 		),
-		'color' => array(
-			'#de472f',
-			'#ffe4e1',
-		),
 	),
 );
 // Load Service Files
 require_once('1feed.keys.php');
-foreach ($apis as $api) {
-	require_once($api['file']);
+foreach ($apis as $key => $api) {
+	if (isset(Keys::$$key))
+		require_once($api['file']);
+	else unset($apis[$key]);
 }
 
 session_start();

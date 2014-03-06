@@ -34,7 +34,7 @@ if (empty($_GET['code']) and !empty($_REQUEST['service']) and in_array($_REQUEST
 // Decode Double-encoded URLs
 if (in_array($_REQUEST['service'], array(
 	'google',
-))) {
+)) and !empty($_REQUEST['state'])) {
 	$_REQUEST['state'] = urldecode($_REQUEST['state']);
 }
 
@@ -42,9 +42,7 @@ if (in_array($_REQUEST['service'], array(
 if (!empty($_GET['code']) and !empty($_REQUEST['service']) and in_array($_REQUEST['service'], array_keys($apis)) and !empty($_SESSION['state']) and $_REQUEST['state'] == $_SESSION['state']) {
 	if (empty($_SESSION['tokens'][$_REQUEST['service']])) {
 		// APIs Using OAuth2.0
-		if (in_array($_REQUEST['service'], array(
-			'fb','google',
-		))) {
+		if (in_array($_REQUEST['service'], array_keys($apis))) {
 			require_once('oauth2.php');
 			$_SESSION[$_REQUEST['service']]->login($_REQUEST['service']);
 			// If we're here, there was an error
