@@ -15,7 +15,7 @@ class Google extends OAuth2 {
 
 	protected function construct() {
 		$urls = array(
-			'feed' => '/people/me/activities',
+			'stream' => '/people/me/activities/public',
 			'user' => '/people/me',
 		);
 		return parent::construct($urls);
@@ -29,12 +29,14 @@ class Google extends OAuth2 {
 		}
 	}
 
-	public static function getURL($target) {
+	public static function getURL($target, $user='me') {
 		switch ($target) {
 		case 'user':
-			return '/people';
+			return "/people/$user";
 		case 'feed':
-			return '/activities';
+			return self::getURL('user', $user) . "/activities/public";
+		case 'circles':
+			return self::getURL('user', $user) . "/people/visible";
 		}
 		return parent::getURL($target);
 	}
@@ -42,37 +44,86 @@ class Google extends OAuth2 {
 	public function getUser($user='me') {
 		$this->construct();
 		if (empty($_SESSION['tokens']['google'])) return false;
-		$url = self::base_uri . self::getURL('user') . "/$user" . self::base_query . $_SESSION['tokens']['google'];
+		$url = self::base_uri . self::getURL('user', $user) . self::base_query . $_SESSION['tokens']['google'];
 		require_once('http.class.php');
 		try {
 			list($headers, $stream) = httpWorker::get($url);
 			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
 			if ((int) ($matches[1] / 100) != 2) {
+error_log("{$headers[0]} in " . __METHOD__);
 				unset($_SESSION['tokens']['google']);
 				return false;
 			}
-			$stream = json_decode($user, true);
-			if (isset($stream['error'])) return false;
-			$_SESSION['user']['google'] = $stream;
+			$user = json_decode($stream, true);
+			if (isset($user['error'])) {
+				$_SESSION['error'] = $user['error'];
+				return false;
+			}
+			$_SESSION['user']['google'] = $user;
 			return true;
 		} catch (Exception $e) {
 		}
 		return false;
 	}
 
-	public function newsStream() {
-		return array();
+	// People $user is Following
+	// https://developers.google.com/+/api/latest/people/list
+	public function getFollowing($user='me') {
 		$this->construct();
-		$stream = file_get_contents($this->urls['stream']);
-		$stream = json_decode($stream, true);
-		if (isset($stream['error'])) return false;
-		return $stream;
+		if (empty($_SESSION['tokens']['google'])) return false;
+		$url = self::base_uri . self::getURL('circles', $user) . self::base_query . $_SESSION['tokens']['google'];
+		require_once('http.class.php');
+		try {
+			list($headers, $json) = httpWorker::get($url);
+			if ((int) ($matches[1] / 100) != 2) {
+#				unset($_SESSION['tokens']['google']);
+				return false;
+			}
+			$users = json_decode($json, true);
+			return $users['items'];
+		} catch (Exception $e) {
+		}
+		return false;
 	}
 
+	// Get Activities from User's Friends
+	public function newsStream() {
+		$this->construct();
+		if (empty($_SESSION['tokens']['google'])) return false;
+error_log("in " . __METHOD__);
+		require_once('http.class.php');
+		$_SESSION['user']['google']['following'] = $this->getFollowing('me');
+		if (empty($_SESSION['user']['google']['following']) or !is_array($_SESSION['user']['google']['following'])) return false;
+		$stream = array();
+		foreach ($_SESSION['user']['google']['following'] as $person) {
+			$stream[] = userFeed($person['id']);
+		}
+return $stream;
+		try {
+			list($headers, $stream) = httpWorker::get($this->urls['stream']);
+			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
+			if ((int) ($matches[1] / 100) != 2) {
+#				unset($_SESSION['tokens']['google']);
+				return false;
+			}
+			$stream = json_decode($stream, true);
+			if (isset($stream['error'])) {
+				$_SESSION['error'] = $stream['error'];
+				return false;
+			}
+			return $stream['items'];
+		} catch (Exception $e) {
+		}
+		return false;
+	}
+
+	// Activities Posted by $user
+	// https://developers.google.com/+/api/latest/activities/list
 	public function userFeed($user='me') {
 		$this->construct();
 		if (empty($_SESSION['tokens']['google'])) {
 			if ($user == 'me') {
+				return false;
 				// Login Required
 				header('HTTP/1.1 403 Forbidden');
 				header('Location: /login?service=google');
@@ -86,6 +137,7 @@ class Google extends OAuth2 {
 			list($headers, $stream) = httpWorker::get($url);
 			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
 			if ((int) ($matches[1] / 100) != 2) {
+error_log("{$headers[0]} in " . __METHOD__);
 				unset($_SESSION['tokens']['google']);
 				return false;
 			}
