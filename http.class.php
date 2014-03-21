@@ -23,7 +23,14 @@ class httpWorker {
 			else $request = '';
 		}
 
-		if (is_array($request)) $request = http_build_query($request, 'var', '&', PHP_QUERY_RFC3986);
+		if (is_array($request)) {
+			$version = explode('.', phpversion());
+			$version = (float) "{$version[0]}.{$version[1]}";
+			if ($version >= 5.4)
+				$request = http_build_query($request, 'var', '&', PHP_QUERY_RFC3986);
+			else
+				$request = http_build_query($request, 'var', '&');
+		}
 
 		if (empty($url) or !filter_var($url, FILTER_VALIDATE_URL))
 			throw new Exception("Valid URL required");
