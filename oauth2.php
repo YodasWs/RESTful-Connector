@@ -64,10 +64,9 @@ abstract class OAuth2 {
 				$http = httpWorker::request($url);
 				$fb_user_response = $http['response'];
 			} catch (Exception $e) {
-				$_SESSION['error'] = array('Could not log into Facebook');
 				header('HTTP/1.1 500 Error');
-				header("Location: {$_SESSION['prelogin']}");
 				unset($_SESSION['prelogin']);
+				echo "Failed to Login to Facebook. Error: {$e->getMessage()}";
 				exit;
 			}
 			// TODO: Check HTTP Status Code
@@ -79,7 +78,7 @@ abstract class OAuth2 {
 			}
 			unset($http);
 			unset($fb_user_response);
-			break;
+			return true;
 		case 'google':
 			$google_response = '';
 			$login_url = urldecode($login_url);

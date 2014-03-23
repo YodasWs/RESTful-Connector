@@ -43,6 +43,32 @@ class Facebook extends OAuth2 {
 		return parent::getURL($target);
 	}
 
+	public function login($api) {
+		$login = parent::login('fb');
+		if ($login and !empty($_SESSION['tokens']['fb'])) {
+			// Get Long-lived Token
+			list($headers, $response) = httpWorker::get(
+				Facebook::token_url . '?grant_type=fb_exchange_token' .
+				'&client_id=' . Keys::$fb['client_id'] .
+				'&client_secret=' . Keys::$fb['secret'] .
+				'&fb_exchange_token=' . $_SESSION['tokens']['fb']
+			);
+			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
+			if ((int) ($matches[1] / 100) == 2) {
+				parse_str($response, $params);
+				$_SESSION['tokens']['fb'] = $params['access_token'];
+				unset($params);
+				// TODO: Get Client Long-lived Token, https://developers.facebook.com/docs/facebook-login/access-tokens
+			}
+			// Success, Redirect!
+			$this->getUser();
+			header('HTTP/1.1 302 Found');
+			header("Location: $login_url");
+			exit;
+		}
+		return false;
+	}
+
 	// Get Profile Picture
 	public static function userPic($user) {
 		return Facebook::base_uri . "/{$user}/picture";
@@ -101,6 +127,7 @@ class Facebook extends OAuth2 {
 				}
 			}
 		} catch (Exception $e) {
+			$_SESSION['error'] = $e->getMessage();
 			return false;
 		}
 
@@ -137,7 +164,9 @@ class Facebook extends OAuth2 {
 // TODO: Ask for Like on Each Item
 			return $stream['data'];
 		} catch (Exception $e) {
+			$_SESSION['error'] = $e->getMessage();
 		}
+		return false;
 	}
 
 	// Load User Activity
@@ -166,6 +195,7 @@ class Facebook extends OAuth2 {
 			if (!empty($feed['error'])) return false;
 			return $feed;
 		} catch (Exception $e) {
+			$_SESSION['error'] = $e->getMessage();
 		}
 		return false;
 	}
@@ -185,6 +215,7 @@ class Facebook extends OAuth2 {
 			));
 			return $response;
 		} catch (Exception $e) {
+			$_SESSION['error'] = $e->getMessage();
 		}
 		return false;
 	}
@@ -215,6 +246,7 @@ class Facebook extends OAuth2 {
 			list($headers, $response) = httpWorker::request($url, 'DELETE');
 			return $response;
 		} catch (Exception $e) {
+			$_SESSION['error'] = $e->getMessage();
 		}
 		return false;
 	}

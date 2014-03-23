@@ -22,7 +22,6 @@ $apis = array(
 	),
 );
 // Load Service Files
-require_once('1feed.keys.php');
 foreach ($apis as $key => $api) {
 	if (isset(Keys::$$key))
 		require_once($api['file']);
@@ -38,7 +37,7 @@ foreach ($apis as $key => $api) {
 	// Load User Data
 	// TODO: Also load if data is "old"
 	if (!empty($_SESSION['tokens'][$key]) and empty($_SESSION['user'][$key])) {
-		$_SESSION['user'][$key] = array();
+#		$_SESSION['user'][$key] = array();
 		$_SESSION[$key]->getUser();
 	}
 }
