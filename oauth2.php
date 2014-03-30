@@ -78,7 +78,7 @@ abstract class OAuth2 {
 			}
 			unset($http);
 			unset($fb_user_response);
-			return true;
+			return $login_url;
 		case 'google':
 			$google_response = '';
 			$login_url = urldecode($login_url);
@@ -102,7 +102,7 @@ abstract class OAuth2 {
 			if ($google_response) {
 				$params = json_decode($google_response, true);
 				$_SESSION['tokens']['google'] = $params['access_token'];
-				// TODO: Save $params['refresh_token']
+				$_SESSION['tokens']['google_refresh'] = $params['refresh_token'];
 				unset($params);
 			}
 			break;

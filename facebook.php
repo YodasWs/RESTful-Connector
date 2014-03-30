@@ -7,6 +7,11 @@ class Facebook extends OAuth2 {
 	const token_url = 'https://graph.facebook.com/oauth/access_token';
 	const base_query = '?access_token=';
 
+	private $paging = array(
+		'next' => array(),
+		'prev' => array(),
+	);
+
 	public function __construct($options=null) {
 		if (!empty($_SESSION['tokens']['fb']) and empty($_SESSION['user']['fb']))
 			$this->getUser();
@@ -44,8 +49,8 @@ class Facebook extends OAuth2 {
 	}
 
 	public function login($api) {
-		$login = parent::login('fb');
-		if ($login and !empty($_SESSION['tokens']['fb'])) {
+		$login_url = parent::login('fb');
+		if (!empty($login_url) and !empty($_SESSION['tokens']['fb'])) {
 			// Get Long-lived Token
 			list($headers, $response) = httpWorker::get(
 				Facebook::token_url . '?grant_type=fb_exchange_token' .
@@ -57,6 +62,7 @@ class Facebook extends OAuth2 {
 			if ((int) ($matches[1] / 100) == 2) {
 				parse_str($response, $params);
 				$_SESSION['tokens']['fb'] = $params['access_token'];
+				$_SESSION['tokens']['fb_expires'] = $params['expires'] + time();
 				unset($params);
 				// TODO: Get Client Long-lived Token, https://developers.facebook.com/docs/facebook-login/access-tokens
 			}
@@ -139,13 +145,16 @@ class Facebook extends OAuth2 {
 	}
 
 	// Load Home Page News Feed
-	public function newsStream() {
+	public function newsStream($limit=25, $query='') {
 		$this->construct();
 		if (empty($_SESSION['tokens']['fb'])) return false;
 		try {
-			list($headers, $stream) = httpWorker::get($this->urls['stream']);
-			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
+			$url = "{$this->urls['stream']}&limit=$limit";
+			if (!empty($query)) $url .= "&$query";
+			list($headers, $stream) = httpWorker::get($url);
+			preg_match("'^HTTP/1\.\d+ (\d+) '", $headers[0], $matches);
 			if ((int) ($matches[1] / 100) != 2) {
+				error_log(__METHOD__ . ": HTTP Status {$matches[1]}");
 				if (in_array($matches[1], array(
 					401,403,
 				))) {
@@ -158,9 +167,14 @@ class Facebook extends OAuth2 {
 			}
 			$stream = json_decode($stream, true);
 			if (isset($stream['error'])) {
+				error_log(__METHOD__ . ': ' .$stream['error']);
 				$_SESSION['error'] = $stream['error'];
 				return false;
 			}
+			if (!empty($stream['paging']['next']) and !in_array($stream['paging']['next'], $this->paging['next']))
+				$this->paging['next'][] = $stream['paging']['next'];
+			if (!empty($stream['paging']['prev']) and !in_array($stream['paging']['prev'], $this->paging['prev']))
+				$this->paging['prev'][] = $stream['paging']['prev'];
 // TODO: Ask for Like on Each Item
 			return $stream['data'];
 		} catch (Exception $e) {

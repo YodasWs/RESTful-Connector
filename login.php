@@ -58,6 +58,7 @@ if (!empty($_GET['code']) and !empty($_REQUEST['service']) and in_array($_REQUES
 // Successfully Logged In !
 header('HTTP/1.1 200 OK');
 header("Location: {$_SESSION['prelogin']}");
+$_SESSION['logged_in'] = true;
 unset($_SESSION['prelogin']);
 exit;
 ?>

@@ -37,7 +37,6 @@ foreach ($apis as $key => $api) {
 	// Load User Data
 	// TODO: Also load if data is "old"
 	if (!empty($_SESSION['tokens'][$key]) and empty($_SESSION['user'][$key])) {
-#		$_SESSION['user'][$key] = array();
 		$_SESSION[$key]->getUser();
 	}
 }
