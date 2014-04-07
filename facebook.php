@@ -20,6 +20,7 @@ class Facebook extends OAuth2 {
 	}
 
 	protected function construct() {
+		if ($this->is_constructed) return true;
 		$urls = array(
 			'stream' => '/me/home',
 			'user' => '/me',
@@ -38,7 +39,7 @@ class Facebook extends OAuth2 {
 
 	public static function getURL($target) {
 		if (in_array($target, array(
-			'feed','picture','permissions','likes',
+			'feed','picture','permissions','likes','comments'
 		))) {
 			return "/$target";
 		} else switch ($target) {
@@ -167,14 +168,14 @@ class Facebook extends OAuth2 {
 			}
 			$stream = json_decode($stream, true);
 			if (isset($stream['error'])) {
-				error_log(__METHOD__ . ': ' .$stream['error']);
+				error_log(__METHOD__ . ': ' . $stream['error']);
 				$_SESSION['error'] = $stream['error'];
 				return false;
 			}
 			if (!empty($stream['paging']['next']) and !in_array($stream['paging']['next'], $this->paging['next']))
-				$this->paging['next'][] = $stream['paging']['next'];
+				$this->paging['next']['stream'] = $stream['paging']['next'];
 			if (!empty($stream['paging']['prev']) and !in_array($stream['paging']['prev'], $this->paging['prev']))
-				$this->paging['prev'][] = $stream['paging']['prev'];
+				$this->paging['prev']['stream'] = $stream['paging']['prev'];
 // TODO: Ask for Like on Each Item
 			return $stream['data'];
 		} catch (Exception $e) {
@@ -216,6 +217,7 @@ class Facebook extends OAuth2 {
 
 	// Like a Facebook Object
 	// https://developers.facebook.com/docs/reference/api/post/
+	// https://developers.facebook.com/docs/graph-api/reference/object/likes
 	public function like($object) {
 		$this->construct();
 		if (empty($_SESSION['tokens']['fb'])) return false;
@@ -227,9 +229,20 @@ class Facebook extends OAuth2 {
 			list($headers, $response) = httpWorker::post(Facebook::base_uri . $object . self::getURL('likes'), array(
 				'access_token' => $_SESSION['tokens']['fb'],
 			));
-			return $response;
+			if (!$response) return false;
+			if ($response == 'true') return true; // Like Successful
+			$response = json_decode($response, true);
+			if (!empty($response['error'])) {
+				if (!empty($response['error']['code']) and $response['error']['code'] == 1705)
+					return true; // User Liked This Already
+				$_SESSION['error'] = $response['error']['message'];
+				error_log($response['error']['message']);
+				return false;
+			}
+			return false;
 		} catch (Exception $e) {
 			$_SESSION['error'] = $e->getMessage();
+			error_log($e->getMessage());
 		}
 		return false;
 	}
@@ -252,12 +265,64 @@ class Facebook extends OAuth2 {
 	public function unlike($object) {
 		$this->construct();
 		if (empty($_SESSION['tokens']['fb'])) return false;
+		if (empty($_SESSION['user']['fb']['permissions'])) return false;
 		if (!in_array('publish_actions', $_SESSION['user']['fb']['permissions'])) return false;
 		$object = $this->validID($object);
 		if (empty($object)) return false;
 		try {
 			$url = Facebook::base_uri . $object . self::getURL('likes') . self::base_query . $_SESSION['tokens']['fb'];
 			list($headers, $response) = httpWorker::request($url, 'DELETE');
+			return $response;
+		} catch (Exception $e) {
+			$_SESSION['error'] = $e->getMessage();
+		}
+		return false;
+	}
+
+	public function getComments($item) {
+		$this->construct();
+		if (empty($_SESSION['tokens']['fb'])) return false;
+		$item = $this->validID($item);
+		if (empty($item)) return false;
+		try {
+			list($headers, $response) = httpWorker::get(
+				Facebook::base_uri . $item . self::getURL('comments') . self::base_query . $_SESSION['tokens']['fb']
+			);
+			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
+			if ((int) ($matches[1] / 100) != 2) return false;
+			if (!$response) return false;
+			$response = json_decode($response, true);
+			if (!empty($response['error'])) {
+				error_log(__METHOD__ . ': ' . $response['error']);
+				$_SESSION['error'] = $response['error'];
+				return false;
+			}
+			if (!isset($response['data'])) return false;
+			return $response['data'];
+		} catch (Exception $e) {
+			$_SESSION['error'] = $e->getMessage();
+		}
+		return false;
+	}
+
+	// TODO: Post Comment
+	public function postComment($item, $comment) {
+		$this->construct();
+		if (empty($_SESSION['tokens']['fb'])) return false;
+		if (empty($_SESSION['user']['fb']['permissions'])) return false;
+		if (!in_array('publish_actions', $_SESSION['user']['fb']['permissions'])) return false;
+		$item = $this->validID($item);
+		if (empty($item)) return false;
+		$key = 'message';
+		if ($attachment = $this->validID($comment)) {
+			$comment = $attachment;
+			$key = 'attachment_id';
+		}
+		try {
+			list($headers, $response) = httpWorker::post(Facebook::base_uri . $object . self::getURL('comments'), array(
+				'access_token' => $_SESSION['tokens']['fb'],
+				$key => $comment,
+			));
 			return $response;
 		} catch (Exception $e) {
 			$_SESSION['error'] = $e->getMessage();
