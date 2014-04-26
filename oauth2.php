@@ -124,6 +124,10 @@ abstract class OAuth2 {
 		return false;
 	}
 
+	public function deconstruct() {
+		$this->is_constructed = false;
+	}
+
 	protected function construct($urls) {
 		if ($this->is_constructed) return true;
 		$class = get_called_class();

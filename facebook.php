@@ -156,9 +156,8 @@ class Facebook extends OAuth2 {
 			preg_match("'^HTTP/1\.\d+ (\d+) '", $headers[0], $matches);
 			if ((int) ($matches[1] / 100) != 2) {
 				error_log(__METHOD__ . ": HTTP Status {$matches[1]}");
-				if (in_array($matches[1], array(
-					401,403,
-				))) {
+				error_log(print_r($stream, true));
+				if ((int) ($matches[1] / 100) == 4) {
 					unset($_SESSION['tokens']['fb']);
 					header('HTTP/1.1 403 Forbidden');
 					header('Location: /login?service=fb');
@@ -289,7 +288,11 @@ class Facebook extends OAuth2 {
 				Facebook::base_uri . $item . self::getURL('comments') . self::base_query . $_SESSION['tokens']['fb']
 			);
 			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
-			if ((int) ($matches[1] / 100) != 2) return false;
+			if ((int) ($matches[1] / 100) != 2) {
+				error_log(__METHOD__ . ': ' . $headers[0]);
+				error_log(print_r($response, true));
+				return false;
+			}
 			if (!$response) return false;
 			$response = json_decode($response, true);
 			if (!empty($response['error'])) {
