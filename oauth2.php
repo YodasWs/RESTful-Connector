@@ -12,6 +12,12 @@ abstract class OAuth2 {
 	public function __construct($options=null) {
 	}
 
+	/**
+	 * Get permission from authorizing agent
+	 *
+	 * @param $api
+	 * @param $login_url The Redirect URL to our Login Page
+	**/
 	public static function getPermission($api, $login_url) {
 		global $apis;
 		if (strpos($login_url, 'http://') !== 0 and strpos($login_url, 'https://') !== 0)
@@ -46,6 +52,11 @@ abstract class OAuth2 {
 		exit;
 	}
 
+	/**
+	 * Login User through Authorizing Agent
+	 *
+	 * @param $api
+	**/
 	public function login($api) {
 		global $apis;
 		list($state, $login_url) = explode('%', $_SESSION['state'], 2);
@@ -128,6 +139,11 @@ abstract class OAuth2 {
 		$this->is_constructed = false;
 	}
 
+	/**
+	 * Builds this::$urls array, adding OAuth Token if logged in
+	 *
+	 * @param $urls
+	**/
 	protected function construct($urls) {
 		if ($this->is_constructed) return true;
 		$class = get_called_class();
@@ -149,6 +165,11 @@ abstract class OAuth2 {
 		$this->is_constructed = true;
 		return true;
 	}
+
+	public function canWrite() {
+		return false;
+	}
+
 	public abstract function userFeed();
 	public abstract function getUser();
 	public abstract function unlike($object);

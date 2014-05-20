@@ -37,14 +37,15 @@ class Facebook extends OAuth2 {
 		}
 	}
 
-	public static function getURL($target) {
+	public static function getURL($target, $user='') {
 		if (in_array($target, array(
 			'feed','picture','permissions','likes','comments'
 		))) {
+			if (!empty($user)) return "/$user/$target";
 			return "/$target";
 		} else switch ($target) {
 		case 'user':
-			return '';
+			return empty($user) ? '' : "/$user";
 		}
 		return parent::getURL($target);
 	}
@@ -78,7 +79,7 @@ class Facebook extends OAuth2 {
 
 	// Get Profile Picture
 	public static function userPic($user) {
-		return Facebook::base_uri . "/{$user}/picture";
+		return self::base_uri . "/{$user}/picture";
 	}
 
 	// Load User Profile
@@ -94,14 +95,14 @@ class Facebook extends OAuth2 {
 			$request['access_token'] = $_SESSION['tokens']['fb'];
 		$keys = array('user'); // Track Which Response Matches Which Request
 		$request['batch'][] = array(
-			'relative_url' => $username . self::getURL('user'),
+			'relative_url' => self::getURL('user', $username),
 			'method' => 'GET',
 		);
 		if ($username == 'me') {
 			// Check Granted Permissions
 			$keys[] = 'permissions';
 			$request['batch'][] = array(
-				'relative_url' => $username . self::getURL('permissions'),
+				'relative_url' => self::getURL('permissions', $username),
 				'method' => 'GET',
 			);
 		}
@@ -196,7 +197,7 @@ class Facebook extends OAuth2 {
 			}
 			return false;
 		}
-		$url = self::base_uri . "/$user" . self::getURL('feed') . self::base_query . $_SESSION['tokens']['fb'];
+		$url = self::base_uri . self::getURL('feed', $user) . self::base_query . $_SESSION['tokens']['fb'];
 		try{
 			list($headers, $feed) = httpWorker::get($url);
 			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
@@ -219,13 +220,12 @@ class Facebook extends OAuth2 {
 	// https://developers.facebook.com/docs/graph-api/reference/object/likes
 	public function like($object) {
 		$this->construct();
-		if (empty($_SESSION['tokens']['fb'])) return false;
-		if (!in_array('publish_actions', $_SESSION['user']['fb']['permissions'])) return false; // Check Permission
+		if (!$this->canWrite()) return false;
 		$object = $this->validID($object);
 		if (empty($object)) return false;
 		// Like
 		try {
-			list($headers, $response) = httpWorker::post(Facebook::base_uri . $object . self::getURL('likes'), array(
+			list($headers, $response) = httpWorker::post(self::base_uri . $object . self::getURL('likes'), array(
 				'access_token' => $_SESSION['tokens']['fb'],
 			));
 			if (!$response) return false;
@@ -263,13 +263,11 @@ class Facebook extends OAuth2 {
 	// Unlike a Facebook Object
 	public function unlike($object) {
 		$this->construct();
-		if (empty($_SESSION['tokens']['fb'])) return false;
-		if (empty($_SESSION['user']['fb']['permissions'])) return false;
-		if (!in_array('publish_actions', $_SESSION['user']['fb']['permissions'])) return false;
+		if (!$this->canWrite()) return false;
 		$object = $this->validID($object);
 		if (empty($object)) return false;
 		try {
-			$url = Facebook::base_uri . $object . self::getURL('likes') . self::base_query . $_SESSION['tokens']['fb'];
+			$url = self::base_uri . $object . self::getURL('likes') . self::base_query . $_SESSION['tokens']['fb'];
 			list($headers, $response) = httpWorker::request($url, 'DELETE');
 			return $response;
 		} catch (Exception $e) {
@@ -285,7 +283,7 @@ class Facebook extends OAuth2 {
 		if (empty($item)) return false;
 		try {
 			list($headers, $response) = httpWorker::get(
-				Facebook::base_uri . $item . self::getURL('comments') . self::base_query . $_SESSION['tokens']['fb']
+				self::base_uri . $item . self::getURL('comments') . self::base_query . $_SESSION['tokens']['fb']
 			);
 			preg_match("'^HTTP/1\.. (\d+) '", $headers[0], $matches);
 			if ((int) ($matches[1] / 100) != 2) {
@@ -311,9 +309,7 @@ class Facebook extends OAuth2 {
 	// TODO: Post Comment
 	public function postComment($item, $comment) {
 		$this->construct();
-		if (empty($_SESSION['tokens']['fb'])) return false;
-		if (empty($_SESSION['user']['fb']['permissions'])) return false;
-		if (!in_array('publish_actions', $_SESSION['user']['fb']['permissions'])) return false;
+		if (!$this->canWrite()) return false;
 		$item = $this->validID($item);
 		if (empty($item)) return false;
 		$key = 'message';
@@ -322,13 +318,43 @@ class Facebook extends OAuth2 {
 			$key = 'attachment_id';
 		}
 		try {
-			list($headers, $response) = httpWorker::post(Facebook::base_uri . $object . self::getURL('comments'), array(
+			list($headers, $response) = httpWorker::post(self::base_uri . $object . self::getURL('comments'), array(
 				'access_token' => $_SESSION['tokens']['fb'],
 				$key => $comment,
 			));
 			return $response;
 		} catch (Exception $e) {
 			$_SESSION['error'] = $e->getMessage();
+		}
+		return false;
+	}
+
+	// Do We Have Write Permission ?
+	public function canWrite() {
+		if (empty($_SESSION['tokens']['fb'])) return false;
+		if (empty($_SESSION['user']['fb']['permissions'])) return false;
+		return in_array('publish_actions', $_SESSION['user']['fb']['permissions']);
+	}
+
+	// Share URL with Facebook
+	public function shareLink($link, $options=null) {
+		$this->construct();
+		if (!$this->canWrite()) return false;
+
+		// Validate Link URL
+		$link = filter_var($link, FILTER_VALIDATE_URL);
+		if (empty($link)) return false;
+		$scheme = parse_url($link, PHP_URL_SCHEME);
+		if (!in_array($scheme, array(
+			'http','https','ssl',
+		))) return false;
+
+		try {
+			list($headers, $fb_response) = httpWorker::post(self::base_uri . self::getURL('feed', 'me'), array(
+				'access_token' => $_SESSION['tokens']['fb'],
+				'link' => $link,
+			));
+		} catch (Exception $e) {
 		}
 		return false;
 	}
